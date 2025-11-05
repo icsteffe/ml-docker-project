@@ -1,0 +1,11 @@
+torch>=2.2.0
+transformers==4.46.2
+datasets>=3.0.1
+evaluate>=0.4.3
+lightning
+wandb
+accelerate>=0.34.0
+numpy
+pandas
+matplotlib
+scikit-learn

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # Training service with optimal hyperparameters
+  training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops-distilbert-training
+    environment:
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - WANDB_ENTITY=${WANDB_ENTITY}
+      - WANDB_PROJECT=${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount models directory to persist checkpoints
+      - ./models:/app/models
+      # Mount config directory for easy config changes
+      - ./config:/app/config:ro
+      # Cache directories for faster subsequent runs
+      - huggingface-cache:/app/.cache/huggingface
+      - wandb-cache:/app/.cache/wandb
+    command: >
+      python main.py
+      --config /app/config/optimal_config.json
+      --checkpoint_dir /app/models
+      --project_name ${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}
+    restart: "no"
+    
+  # Alternative: Training with custom hyperparameters
+  training-custom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops-distilbert-custom
+    environment:
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - WANDB_ENTITY=${WANDB_ENTITY}
+      - WANDB_PROJECT=${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./models:/app/models
+      - ./config:/app/config:ro
+      - huggingface-cache:/app/.cache/huggingface
+      - wandb-cache:/app/.cache/wandb
+    command: >
+      python main.py
+      --checkpoint_dir /app/models
+      --lr 2e-5
+      --weight_decay 0.1
+      --warmup_ratio 0.15
+      --project_name ${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}_custom
+    restart: "no"
+    profiles:
+      - custom
+
+  # Hyperparameter sweep service
+  sweep:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops-distilbert-sweep
+    environment:
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - WANDB_PROJECT=${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}_sweep
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./models:/app/models
+      - huggingface-cache:/app/.cache/huggingface
+      - wandb-cache:/app/.cache/wandb
+    command: >
+      python main.py
+      --sweep
+      --method bayes
+      --count 8
+      --checkpoint_dir /app/models
+      --project_name ${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}_sweep
+    restart: "no"
+    profiles:
+      - sweep
+
+volumes:
+  huggingface-cache:
+    driver: local
+  wandb-cache:
+    driver: local
