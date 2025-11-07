@@ -1,193 +1,195 @@
 # MLOps Project 2: DistilBERT Hyperparameter Tuning
 
-This project adapts the Jupyter notebook from Project 1 into a structured MLOps pipeline for training DistilBERT on GLUE tasks with comprehensive hyperparameter tuning and experiment tracking.
+A complete MLOps pipeline for training DistilBERT on GLUE tasks with automated hyperparameter tuning and experiment tracking. This project adapts a Jupyter notebook into a production-ready containerized training system.
 
-## Project Structure
+## 🚀 Quick Setup
+
+### Local Development
+```bash
+# 1. Clone and navigate to project
+cd mlops-project2
+
+# 2. Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run training with optimal hyperparameters
+python main.py --checkpoint_dir models --lr 3e-5 --weight_decay 0.120 --warmup_ratio 0.240
+```
+
+### Docker (Production)
+```bash
+# 1. Setup environment
+cp .env.example .env
+# Edit .env with your W&B credentials
+
+# 2. Build and run container
+docker build -t mlops-distilbert .
+docker run --rm --env-file .env -v ${PWD}/models:/app/models mlops-distilbert
+
+# Or use docker-compose
+docker-compose up training
+```
+
+## 📁 Project Structure
 
 ```
 mlops-project2/
-├── src/                    # Source code modules
-│   ├── __init__.py
-│   ├── data_module.py      # Lightning DataModule for GLUE tasks
-│   ├── model.py           # DistilBERT Lightning module
-│   └── trainer.py         # Training utilities and sweep configs
+├── src/                    # Modular source code
+│   ├── data_module.py      # GLUE data loading
+│   ├── model.py           # DistilBERT Lightning module  
+│   ├── trainer.py         # Training utilities
+│   └── __init__.py
 ├── config/                # Configuration files
-│   └── default_config.json
-├── scripts/               # Convenience scripts
-│   ├── run_training.py
-│   └── run_sweep.py
-├── models/                # Model checkpoints and outputs
-├── data/                  # Dataset cache (auto-created)
+│   ├── default_config.json     # Standard hyperparameters
+│   └── optimal_config.json     # Best parameters from Project 1
+├── scripts/               # Utility scripts
+├── models/                # Output directory for trained models
 ├── main.py               # Main training script
+├── Dockerfile            # Container definition
+├── docker-compose.yml    # Multi-service deployment
 ├── requirements.txt      # Python dependencies
-└── README.md
+└── .env.example         # Environment template
 ```
 
-## Setup
+## 🎯 Key Features
 
-1. **Create and activate virtual environment:**
-   ```bash
-   python -m venv .venv
-   # On Windows:
-   .venv\Scripts\activate
-   # On Linux/Mac:
-   source .venv/bin/activate
-   ```
+- **🔬 Optimal Hyperparameters**: Pre-configured with best parameters from Project 1 (86.03% accuracy)
+- **📊 Experiment Tracking**: Full W&B integration with automatic run naming
+- **🐳 Containerized**: Docker support for consistent deployments
+- **🔄 Reproducible**: Fixed seeds and deterministic training
+- **📈 Multiple Search Methods**: Bayesian, Grid, and Random hyperparameter optimization
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## ⚙️ Usage Examples
 
-3. **Login to Weights & Biases:**
-   ```bash
-   wandb login
-   ```
-
-## Usage
-
-### Single Training Run
-
-Train with default hyperparameters:
+### Basic Training
 ```bash
-python main.py --checkpoint_dir models --lr 3e-5
-```
+# Use optimal hyperparameters (recommended)
+python main.py --config config/optimal_config.json
 
-Train with custom hyperparameters:
-```bash
-python main.py --checkpoint_dir models --lr 1e-3 --weight_decay 0.1 --warmup_ratio 0.2
-```
-
-Train with configuration file:
-```bash
-python main.py --checkpoint_dir models --config config/default_config.json
+# Custom hyperparameters  
+python main.py --lr 2e-5 --weight_decay 0.1 --warmup_ratio 0.15
 ```
 
 ### Hyperparameter Sweeps
-
-Run Bayesian optimization sweep:
 ```bash
-python main.py --sweep --method bayes --count 12 --checkpoint_dir models/sweep
-```
-
-Run grid search sweep:
-```bash
-python main.py --sweep --method grid --count 20 --checkpoint_dir models/grid
-```
-
-Run random search sweep:
-```bash
-python main.py --sweep --method random --count 15 --checkpoint_dir models/random
-```
-
-### Command Line Arguments
-
-#### Training Arguments
-- `--checkpoint_dir`: Directory to save model checkpoints (default: "models")
-- `--lr, --learning_rate`: Learning rate (default: 3e-5)
-- `--weight_decay`: Weight decay (default: 0.1)
-- `--warmup_ratio`: Warmup ratio (default: 0.2)
-- `--batch_size`: Training batch size (default: 16)
-- `--max_epochs`: Maximum training epochs (default: 3)
-- `--seed`: Random seed (default: 42)
-
-#### Model and Task Arguments
-- `--model_name`: Pretrained model name (default: "distilbert-base-uncased")
-- `--task_name`: GLUE task name (default: "mrpc")
-
-#### W&B Arguments
-- `--project_name`: W&B project name (default: "MLOPS_p2_distilbert")
-- `--no_wandb`: Disable W&B logging
-
-#### Sweep Arguments
-- `--sweep`: Run hyperparameter sweep
-- `--method`: Sweep method (bayes/grid/random, default: "bayes")
-- `--count`: Number of sweep runs (default: 12)
-
-#### Configuration
-- `--config`: Path to JSON configuration file
-
-## Features
-
-### Modular Architecture
-- **Data Module**: Handles GLUE dataset loading and preprocessing
-- **Model Module**: DistilBERT Lightning module with configurable hyperparameters
-- **Trainer Module**: Training utilities, sweep configurations, and helper functions
-
-### Experiment Tracking
-- Full Weights & Biases integration
-- Automatic run naming based on hyperparameters
-- Comprehensive metric logging
-- Sweep support for automated hyperparameter optimization
-
-### Hyperparameter Optimization
-- Support for Bayesian, Grid, and Random search
-- Configurable search spaces
-- Built-in optimal ranges based on Project 1 results
-
-### Reproducibility
-- Fixed random seeds
-- Deterministic training
-- Configuration saving and loading
-- Checkpoint management
-
-## Example Commands
-
-```bash
-# Basic training
-python main.py --checkpoint_dir models --lr 3e-5
-
-# Training with optimal config from Project 1
-python main.py --checkpoint_dir models --lr 3e-5 --weight_decay 0.12 --warmup_ratio 0.24
-
-# Bayesian optimization around optimal region
+# Bayesian optimization (12 runs)
 python main.py --sweep --method bayes --count 12
 
-# Grid search with limited runs
+# Grid search
 python main.py --sweep --method grid --count 20
-
-# Training without W&B
-python main.py --checkpoint_dir models --lr 2e-5 --no_wandb
 ```
 
-## Configuration Files
+### Docker Deployment
+```bash
+# Single training run
+docker-compose up training
 
-The `config/default_config.json` contains the optimal hyperparameters found in Project 1:
+# Custom hyperparameters
+docker-compose --profile custom up training-custom
 
+# Hyperparameter sweep
+docker-compose --profile sweep up sweep
+```
+
+## 🏆 Optimal Results
+
+Based on extensive hyperparameter optimization in Project 1:
+
+| Parameter | Value | Performance |
+|-----------|-------|-------------|
+| Learning Rate | 3e-5 | **86.03% Accuracy** |
+| Weight Decay | 0.120 | **90.36% F1 Score** |
+| Warmup Ratio | 0.240 | **0.3912 Loss** |
+
+The model automatically names runs as: `lr3e-05_wd0.120_wr0.240`
+
+## 🔧 Environment Setup
+
+Create `.env` file with your W&B credentials:
+
+```bash
+# Weights & Biases Configuration
+WANDB_API_KEY=your_api_key_here
+WANDB_ENTITY=your_username_or_team
+WANDB_PROJECT=MLOPS_p2_distilbert_docker
+```
+
+## 📈 Monitoring & Logs
+
+- **W&B Dashboard**: Automatic experiment tracking and metrics
+- **Model Outputs**: Saved to `./models/` directory
+- **Docker Logs**: `docker-compose logs training`
+
+## 🚀 Advanced Usage
+
+### Custom Configuration
 ```json
+// config/custom_config.json
 {
-  "learning_rate": 3e-5,
+  "learning_rate": 2e-5,
   "weight_decay": 0.1,
-  "warmup_ratio": 0.2,
-  "per_device_train_batch_size": 16,
-  "per_device_eval_batch_size": 16,
-  "max_seq_length": 128,
-  "optimizer_type": "adamw_torch",
-  "lr_scheduler_type": "linear",
-  "classifier_dropout": 0.1
+  "warmup_ratio": 0.15,
+  "per_device_train_batch_size": 32,
+  "max_epochs": 5
 }
 ```
 
-## Results from Project 1
+### Multiple Environments
+```bash
+# Development
+python main.py --no_wandb --max_epochs 1
 
-- **Manual Tuning (Week 2)**: Best accuracy 85.78%
-- **Bayesian Optimization (Week 3)**: Best accuracy 86.03%
-- **Optimal Configuration**: LR=3e-5, WD=0.12, WR=0.24
+# Production
+docker run --env-file .env mlops-distilbert
 
-## Development
+# Experimentation  
+python main.py --sweep --method random --count 50
+```
 
-To extend the project:
+## 🛠️ Development
 
-1. **Add new models**: Modify `src/model.py`
-2. **Add new tasks**: Extend `src/data_module.py`
-3. **Customize training**: Modify `src/trainer.py`
-4. **Add new sweep strategies**: Update sweep configs in `src/trainer.py`
+### Adding New Models
+1. Extend `src/model.py` with new architecture
+2. Update `src/data_module.py` for new datasets
+3. Modify `src/trainer.py` for custom training loops
 
-## Dependencies
+### Testing
+```bash
+# Quick test run
+python main.py --max_epochs 1 --no_wandb
 
-See `requirements.txt` for full list. Key dependencies:
-- PyTorch Lightning
-- Transformers
-- Datasets
-- Weights & Biases
-- Evaluate
+# Docker test
+docker run --rm mlops-distilbert python main.py --max_epochs 1
+```
+
+## 📋 Dependencies
+
+**Core ML Stack:**
+- PyTorch Lightning (training framework)
+- Transformers (DistilBERT model)
+- Datasets (GLUE data loading)
+- Evaluate (metrics computation)
+
+**MLOps Tools:**
+- Weights & Biases (experiment tracking)
+- Docker (containerization)
+- NumPy, Pandas (data processing)
+
+## 🎓 Project Evolution
+
+**From Project 1:** Jupyter notebook exploration → **To Project 2:** Production MLOps pipeline
+
+- ✅ Converted notebook to modular Python scripts
+- ✅ Added Docker containerization
+- ✅ Integrated experiment tracking
+- ✅ Implemented automated hyperparameter optimization
+- ✅ Created reproducible training pipeline
+
+---
+
+**🚀 Ready to train? Start with:** `python main.py --config config/optimal_config.json`
