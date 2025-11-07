@@ -31,7 +31,24 @@ def create_run_name(config: Dict[str, Any]) -> str:
     lr = config.get('learning_rate', config.get('lr', 'unknown'))
     wd = config.get('weight_decay', 'unknown')
     wr = config.get('warmup_ratio', 'unknown')
-    return f"lr{lr}_wd{wd}_wr{wr}"
+    
+    # Format learning rate in scientific notation, others with 3 decimal places
+    if isinstance(lr, (int, float)):
+        lr_str = f"{lr:.0e}"
+    else:
+        lr_str = str(lr)
+    
+    if isinstance(wd, (int, float)):
+        wd_str = f"{wd:.3f}"
+    else:
+        wd_str = str(wd)
+    
+    if isinstance(wr, (int, float)):
+        wr_str = f"{wr:.3f}"
+    else:
+        wr_str = str(wr)
+    
+    return f"lr{lr_str}_wd{wd_str}_wr{wr_str}"
 
 
 def train_model(
@@ -87,6 +104,12 @@ def train_model(
     )
     dm.setup("fit")
     
+    # Calculate warmup steps
+    warmup_ratio = config.get('warmup_ratio', 0.0)
+    # Estimate total training steps: (dataset_size / batch_size) * epochs
+    # We'll let Lightning calculate this properly during training
+    warmup_steps = 0  # Will be calculated properly in the model
+    
     # Model
     model = GLUETransformer(
         model_name_or_path=model_name,
@@ -95,8 +118,8 @@ def train_model(
         task_name=task_name,
         learning_rate=config.get('learning_rate', 2e-5),
         weight_decay=config.get('weight_decay', 0.0),
-        warmup_steps=int(config.get('warmup_ratio', 0.0) * 
-                        (len(dm.train_dataloader()) * max_epochs)),
+        warmup_steps=warmup_steps,
+        warmup_ratio=warmup_ratio,  # Pass ratio to model for proper calculation
         train_batch_size=config.get('per_device_train_batch_size', 16),
         eval_batch_size=config.get('per_device_eval_batch_size', 16),
     )

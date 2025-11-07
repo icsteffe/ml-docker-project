@@ -1,46 +1,42 @@
-# Use Python 3.11 slim image as base
+# Lightweight Dockerfile using slim Python base
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
+    git curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Install PyTorch CPU version first
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install other dependencies
+RUN pip install --no-cache-dir \
+    transformers==4.46.2 \
+    datasets>=3.0.1 \
+    evaluate>=0.4.3 \
+    lightning \
+    wandb \
+    accelerate>=0.34.0 \
+    numpy \
+    pandas \
+    scipy \
+    scikit-learn
 
 # Copy source code
 COPY src/ ./src/
 COPY config/ ./config/
 COPY main.py .
 
-# Create directories for outputs
-RUN mkdir -p /app/models /app/outputs
+# Create output directories with proper permissions
+RUN mkdir -p /app/models /app/.cache && chmod 777 /app/.cache
 
-# Set environment variables
+# Set environment variables for cache
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-ENV WANDB_CACHE_DIR=/app/.cache/wandb
+ENV TRANSFORMERS_CACHE=/app/.cache/transformers
 ENV HF_HOME=/app/.cache/huggingface
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
-# Default command runs training with optimal hyperparameters
-CMD ["python", "main.py", \
-     "--checkpoint_dir", "/app/models", \
-     "--lr", "3e-5", \
-     "--weight_decay", "0.120", \
-     "--warmup_ratio", "0.240", \
-     "--batch_size", "16", \
-     "--max_epochs", "3", \
-     "--project_name", "MLOPS_p2_distilbert_docker"]
+# Default command with optimal parameters
+CMD ["bash", "-c", "wandb login $WANDB_API_KEY && python main.py --checkpoint_dir /app/models --lr 3e-5 --weight_decay 0.120 --warmup_ratio 0.240 --batch_size 16 --max_epochs 3"]

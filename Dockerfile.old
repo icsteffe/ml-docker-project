@@ -1,0 +1,48 @@
+# Use Python 3.11 slim image as base
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create non-root user first
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Copy source code and set ownership immediately
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser config/ ./config/
+COPY --chown=appuser:appuser main.py .
+
+# Create directories for outputs and cache with proper ownership
+RUN mkdir -p /app/models /app/outputs /app/.cache/huggingface /app/.cache/wandb && \
+    chown -R appuser:appuser /app
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV WANDB_CACHE_DIR=/app/.cache/wandb
+ENV HF_HOME=/app/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+
+# Switch to non-root user
+USER appuser
+
+# Default command runs single training with optimal hyperparameters
+CMD ["python", "main.py", \
+     "--checkpoint_dir", "/app/models", \
+     "--lr", "3e-5", \
+     "--weight_decay", "0.120", \
+     "--warmup_ratio", "0.240", \
+     "--batch_size", "16", \
+     "--max_epochs", "3"]

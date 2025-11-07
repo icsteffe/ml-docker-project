@@ -24,6 +24,7 @@ class GLUETransformer(L.LightningModule):
         task_name: str,
         learning_rate: float = 2e-5,
         warmup_steps: int = 0,
+        warmup_ratio: float = 0.0,
         weight_decay: float = 0.0,
         train_batch_size: int = 32,
         eval_batch_size: int = 32,
@@ -102,10 +103,16 @@ class GLUETransformer(L.LightningModule):
         ]
         optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.hparams.learning_rate)
 
+        # Calculate warmup steps from ratio if provided
+        total_steps = self.trainer.estimated_stepping_batches
+        warmup_steps = self.hparams.warmup_steps
+        if hasattr(self.hparams, 'warmup_ratio') and self.hparams.warmup_ratio > 0:
+            warmup_steps = int(self.hparams.warmup_ratio * total_steps)
+
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=self.hparams.warmup_steps,
-            num_training_steps=self.trainer.estimated_stepping_batches,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_steps,
         )
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         return [optimizer], [scheduler]
