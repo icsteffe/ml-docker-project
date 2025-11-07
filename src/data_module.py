@@ -3,8 +3,9 @@ Data module for GLUE tasks using Lightning DataModule.
 """
 import datasets
 import lightning as L
+import torch
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, DataCollatorWithPadding
 
 
 class GLUEDataModule(L.LightningDataModule):
@@ -50,21 +51,22 @@ class GLUEDataModule(L.LightningDataModule):
         self,
         model_name_or_path: str,
         task_name: str = "mrpc",
-        max_seq_length: int = 128,
         train_batch_size: int = 32,
-        eval_batch_size: int = 32,
+        seed: int = 42,
         **kwargs,
     ):
         super().__init__()
         self.model_name_or_path = model_name_or_path
         self.task_name = task_name
-        self.max_seq_length = max_seq_length
         self.train_batch_size = train_batch_size
-        self.eval_batch_size = eval_batch_size
+        self.seed = seed
 
         self.text_fields = self.task_text_field_map[task_name]
         self.num_labels = self.glue_task_num_labels[task_name]
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, use_fast=True)
+
+        # Data collator for dynamic padding (matches Project 1 notebook behavior)
+        self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
 
     def setup(self, stage: str):
         self.dataset = datasets.load_dataset("glue", self.task_name)
@@ -85,19 +87,47 @@ class GLUEDataModule(L.LightningDataModule):
         AutoTokenizer.from_pretrained(self.model_name_or_path, use_fast=True)
 
     def train_dataloader(self):
-        return DataLoader(self.dataset["train"], batch_size=self.train_batch_size, shuffle=True)
+        generator = torch.Generator()
+        generator.manual_seed(self.seed)
+        return DataLoader(
+            self.dataset["train"],
+            batch_size=self.train_batch_size,
+            shuffle=True,
+            generator=generator,
+            collate_fn=self.data_collator
+        )
 
     def val_dataloader(self):
         if len(self.eval_splits) == 1:
-            return DataLoader(self.dataset["validation"], batch_size=self.eval_batch_size)
+            return DataLoader(
+                self.dataset["validation"],
+                batch_size=self.train_batch_size,
+                collate_fn=self.data_collator
+            )
         elif len(self.eval_splits) > 1:
-            return [DataLoader(self.dataset[x], batch_size=self.eval_batch_size) for x in self.eval_splits]
+            return [
+                DataLoader(
+                    self.dataset[x],
+                    batch_size=self.train_batch_size,
+                    collate_fn=self.data_collator
+                ) for x in self.eval_splits
+            ]
 
     def test_dataloader(self):
         if len(self.eval_splits) == 1:
-            return DataLoader(self.dataset["test"], batch_size=self.eval_batch_size)
+            return DataLoader(
+                self.dataset["test"],
+                batch_size=self.train_batch_size,
+                collate_fn=self.data_collator
+            )
         elif len(self.eval_splits) > 1:
-            return [DataLoader(self.dataset[x], batch_size=self.eval_batch_size) for x in self.eval_splits]
+            return [
+                DataLoader(
+                    self.dataset[x],
+                    batch_size=self.train_batch_size,
+                    collate_fn=self.data_collator
+                ) for x in self.eval_splits
+            ]
 
     def convert_to_features(self, example_batch, indices=None):
         # Either encode single sentence or sentence pairs
@@ -107,8 +137,9 @@ class GLUEDataModule(L.LightningDataModule):
             texts_or_text_pairs = example_batch[self.text_fields[0]]
 
         # Tokenize the text/text pairs
+        # Use default max_length (512 for DistilBERT) to match Project 1
         features = self.tokenizer.batch_encode_plus(
-            texts_or_text_pairs, max_length=self.max_seq_length, padding="max_length", truncation=True
+            texts_or_text_pairs, truncation=True
         )
 
         # Rename label to labels to make it easier to pass to model forward

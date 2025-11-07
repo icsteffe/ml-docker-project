@@ -38,5 +38,5 @@ ENV PYTHONUNBUFFERED=1
 ENV TRANSFORMERS_CACHE=/app/.cache/transformers
 ENV HF_HOME=/app/.cache/huggingface
 
-# Default command with optimal parameters
-CMD ["bash", "-c", "wandb login $WANDB_API_KEY && python main.py --checkpoint_dir /app/models --lr 3e-05 --weight_decay 0.08754104905198969 --warmup_ratio 0.1814720791654623 --batch_size 16 --max_epochs 3"]
+# Default command with optimal parameters from config file
+CMD ["bash", "-c", "wandb login $WANDB_API_KEY && python main.py --checkpoint_dir /app/models --config /app/config/optimal_config.json --max_epochs 3"]

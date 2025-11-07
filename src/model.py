@@ -16,7 +16,7 @@ from transformers import (
 
 class GLUETransformer(L.LightningModule):
     """PyTorch Lightning module for GLUE tasks."""
-    
+
     def __init__(
         self,
         model_name_or_path: str,
@@ -27,8 +27,12 @@ class GLUETransformer(L.LightningModule):
         warmup_ratio: float = 0.0,
         weight_decay: float = 0.0,
         train_batch_size: int = 32,
-        eval_batch_size: int = 32,
         eval_splits: Optional[list] = None,
+        adam_beta1: float = 0.9,
+        adam_beta2: float = 0.999,
+        optimizer_type: str = "adamw_torch",
+        lr_scheduler_type: str = "linear",
+        classifier_dropout: Optional[float] = None,
         **kwargs,
     ):
         super().__init__()
@@ -36,6 +40,11 @@ class GLUETransformer(L.LightningModule):
         self.save_hyperparameters()
 
         self.config = AutoConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
+
+        # Set hidden dropout if provided (matches Project 1 notebook)
+        if classifier_dropout is not None:
+            self.config.hidden_dropout_prob = classifier_dropout
+
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path, config=self.config)
         self.metric = evaluate.load(
             "glue", self.hparams.task_name, experiment_id=datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
@@ -101,7 +110,25 @@ class GLUETransformer(L.LightningModule):
                 "weight_decay": 0.0,
             },
         ]
-        optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.hparams.learning_rate)
+
+        # Use optimizer_type and adam betas from config
+        optimizer_type = self.hparams.optimizer_type if hasattr(self.hparams, 'optimizer_type') else "adamw_torch"
+        adam_beta1 = self.hparams.adam_beta1 if hasattr(self.hparams, 'adam_beta1') else 0.9
+        adam_beta2 = self.hparams.adam_beta2 if hasattr(self.hparams, 'adam_beta2') else 0.999
+
+        if optimizer_type == "adamw_torch":
+            optimizer = torch.optim.AdamW(
+                optimizer_grouped_parameters,
+                lr=self.hparams.learning_rate,
+                betas=(adam_beta1, adam_beta2)
+            )
+        else:
+            # Default to AdamW if optimizer type not recognized
+            optimizer = torch.optim.AdamW(
+                optimizer_grouped_parameters,
+                lr=self.hparams.learning_rate,
+                betas=(adam_beta1, adam_beta2)
+            )
 
         # Calculate warmup steps from ratio if provided
         total_steps = self.trainer.estimated_stepping_batches
@@ -109,10 +136,22 @@ class GLUETransformer(L.LightningModule):
         if hasattr(self.hparams, 'warmup_ratio') and self.hparams.warmup_ratio > 0:
             warmup_steps = int(self.hparams.warmup_ratio * total_steps)
 
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer,
-            num_warmup_steps=warmup_steps,
-            num_training_steps=total_steps,
-        )
+        # Use lr_scheduler_type from config
+        lr_scheduler_type = self.hparams.lr_scheduler_type if hasattr(self.hparams, 'lr_scheduler_type') else "linear"
+
+        if lr_scheduler_type == "linear":
+            scheduler = get_linear_schedule_with_warmup(
+                optimizer,
+                num_warmup_steps=warmup_steps,
+                num_training_steps=total_steps,
+            )
+        else:
+            # Default to linear if scheduler type not recognized
+            scheduler = get_linear_schedule_with_warmup(
+                optimizer,
+                num_warmup_steps=warmup_steps,
+                num_training_steps=total_steps,
+            )
+
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         return [optimizer], [scheduler]

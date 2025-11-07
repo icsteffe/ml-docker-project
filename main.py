@@ -15,6 +15,7 @@ from pathlib import Path
 import wandb
 
 from src import train_model, create_sweep_config, set_seed
+from src.trainer import create_run_name
 
 
 def parse_args():
@@ -145,24 +146,28 @@ def run_single_training(args):
         "weight_decay": args.weight_decay,
         "warmup_ratio": args.warmup_ratio,
         "per_device_train_batch_size": args.batch_size,
-        "per_device_eval_batch_size": args.batch_size,
-        "max_seq_length": 128,
     }
-    
+
     # Load from config file if provided
     if args.config:
         file_config = load_config(args.config)
         config.update(file_config)
-    
+
     print("Training configuration:")
     for key, value in config.items():
         print(f"  {key}: {value}")
-    
-    # Save configuration
-    config_dir = Path(args.checkpoint_dir) / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    save_config(config, config_dir / "training_config.json")
-    
+
+    # Create unique run name based on hyperparameters
+    run_name = create_run_name(config)
+    print(f"\nRun name: {run_name}")
+
+    # Create checkpoint directory
+    Path(args.checkpoint_dir).mkdir(parents=True, exist_ok=True)
+
+    # Save configuration with hyperparameter-based filename
+    config_filename = f"{run_name}_config.json"
+    save_config(config, Path(args.checkpoint_dir) / config_filename)
+
     # Train model
     results = train_model(
         config=config,
@@ -174,15 +179,16 @@ def run_single_training(args):
         seed=args.seed,
         use_wandb=not args.no_wandb,
     )
-    
+
     print("\nTraining completed!")
     print("Results:")
     for key, value in results.items():
         print(f"  {key}: {value}")
-    
-    # Save results
-    save_config(results, config_dir / "training_results.json")
-    
+
+    # Save results with hyperparameter-based filename
+    results_filename = f"{run_name}_results.json"
+    save_config(results, Path(args.checkpoint_dir) / results_filename)
+
     return results
 
 
@@ -209,11 +215,7 @@ def run_sweep(args):
         with wandb.init() as run:
             config = dict(wandb.config)
             
-            # Add fixed parameters
-            config.update({
-                "per_device_eval_batch_size": config["per_device_train_batch_size"],
-                "max_seq_length": 128,
-            })
+            # No fixed parameters needed - all provided by sweep config
             
             results = train_model(
                 config=config,

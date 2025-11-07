@@ -2,7 +2,7 @@
 
 A complete MLOps pipeline for training DistilBERT on GLUE tasks with automated hyperparameter tuning and experiment tracking. This project adapts a Jupyter notebook into a production-ready containerized training system.
 
-## 🚀 Quick Setup
+## Quick Setup
 
 ### Local Development
 ```bash
@@ -18,7 +18,7 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # 4. Run training with optimal hyperparameters
-python main.py --checkpoint_dir models --lr 3e-5 --weight_decay 0.120 --warmup_ratio 0.240
+python main.py --checkpoint_dir models --lr 3e-05 --weight_decay 0.08754104905198969 --warmup_ratio 0.1814720791654623
 ```
 
 ### Docker (Production)
@@ -31,11 +31,9 @@ cp .env.example .env
 docker build -t mlops-distilbert .
 docker run --rm --env-file .env -v ${PWD}/models:/app/models mlops-distilbert
 
-# Or use docker-compose
-docker-compose up training
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 mlops-project2/
@@ -56,15 +54,15 @@ mlops-project2/
 └── .env.example         # Environment template
 ```
 
-## 🎯 Key Features
+## Key Features
 
-- **🔬 Optimal Hyperparameters**: Pre-configured with best parameters from Project 1 (86.03% accuracy)
-- **📊 Experiment Tracking**: Full W&B integration with automatic run naming
-- **🐳 Containerized**: Docker support for consistent deployments
-- **🔄 Reproducible**: Fixed seeds and deterministic training
-- **📈 Multiple Search Methods**: Bayesian, Grid, and Random hyperparameter optimization
+- ** Optimal Hyperparameters**: Pre-configured with best parameters from Project 1 (86.03% accuracy)
+- ** Experiment Tracking**: Full W&B integration with automatic run naming
+- ** Containerized**: Docker support for consistent deployments
+- ** Reproducible**: Fixed seeds and deterministic training
+- ** Multiple Search Methods**: Bayesian, Grid, and Random hyperparameter optimization
 
-## ⚙️ Usage Examples
+## Usage Examples
 
 ### Basic Training
 ```bash
@@ -96,7 +94,7 @@ docker-compose --profile custom up training-custom
 docker-compose --profile sweep up sweep
 ```
 
-## 🏆 Optimal Results
+## Optimal Results
 
 Based on extensive hyperparameter optimization in Project 1:
 
@@ -108,7 +106,7 @@ Based on extensive hyperparameter optimization in Project 1:
 
 The model automatically names runs as: `lr3e-05_wd0.088_wr0.181`
 
-## 🔧 Environment Setup
+## Environment Setup
 
 Create `.env` file with your W&B credentials:
 
@@ -119,15 +117,15 @@ WANDB_ENTITY=your_username_or_team
 WANDB_PROJECT=MLOPS_p2_distilbert_docker
 ```
 
-## 📈 Monitoring & Logs
+## Monitoring & Logs
 
 - **W&B Dashboard**: Automatic experiment tracking and metrics
 - **Model Outputs**: Saved to `./models/` directory
 - **Docker Logs**: `docker-compose logs training`
 
-## 🚀 Advanced Usage
+## Advanced Usage
 
-### Custom Configuration
+### Custom Configuration example
 ```json
 // config/custom_config.json
 {
@@ -151,7 +149,7 @@ docker run --env-file .env mlops-distilbert
 python main.py --sweep --method random --count 50
 ```
 
-## 🛠️ Development
+## Development
 
 ### Adding New Models
 1. Extend `src/model.py` with new architecture
@@ -167,7 +165,7 @@ python main.py --max_epochs 1 --no_wandb
 docker run --rm mlops-distilbert python main.py --max_epochs 1
 ```
 
-## 📋 Dependencies
+## Dependencies
 
 **Core ML Stack:**
 - PyTorch Lightning (training framework)
@@ -180,16 +178,16 @@ docker run --rm mlops-distilbert python main.py --max_epochs 1
 - Docker (containerization)
 - NumPy, Pandas (data processing)
 
-## 🎓 Project Evolution
+## Project Evolution
 
 **From Project 1:** Jupyter notebook exploration → **To Project 2:** Production MLOps pipeline
 
-- ✅ Converted notebook to modular Python scripts
-- ✅ Added Docker containerization
-- ✅ Integrated experiment tracking
-- ✅ Implemented automated hyperparameter optimization
-- ✅ Created reproducible training pipeline
+- Converted notebook to modular Python scripts
+- Added Docker containerization
+- Integrated experiment tracking
+- Implemented automated hyperparameter optimization
+- Created reproducible training pipeline
 
 ---
 
-**🚀 Ready to train? Start with:** `python main.py --config config/optimal_config.json`
+* Ready to train? Start with:** `python main.py --config config/optimal_config.json`

@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import wandb
 from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 from .data_module import GLUEDataModule
 from .model import GLUETransformer
@@ -27,28 +28,13 @@ def set_seed(seed: int = 42):
 
 
 def create_run_name(config: Dict[str, Any]) -> str:
-    """Create descriptive run name from hyperparameters."""
+    """Create descriptive run name from hyperparameters (matches Project 1 notebook)."""
     lr = config.get('learning_rate', config.get('lr', 'unknown'))
     wd = config.get('weight_decay', 'unknown')
     wr = config.get('warmup_ratio', 'unknown')
-    
-    # Format learning rate in scientific notation, others with 3 decimal places
-    if isinstance(lr, (int, float)):
-        lr_str = f"{lr:.0e}"
-    else:
-        lr_str = str(lr)
-    
-    if isinstance(wd, (int, float)):
-        wd_str = f"{wd:.3f}"
-    else:
-        wd_str = str(wd)
-    
-    if isinstance(wr, (int, float)):
-        wr_str = f"{wr:.3f}"
-    else:
-        wr_str = str(wr)
-    
-    return f"lr{lr_str}_wd{wd_str}_wr{wr_str}"
+
+    # Use raw values to match Project 1 notebook naming
+    return f"lr{lr}_wd{wd}_wr{wr}"
 
 
 def train_model(
@@ -98,9 +84,8 @@ def train_model(
     dm = GLUEDataModule(
         model_name_or_path=model_name,
         task_name=task_name,
-        max_seq_length=config.get('max_seq_length', 128),
         train_batch_size=config.get('per_device_train_batch_size', 16),
-        eval_batch_size=config.get('per_device_eval_batch_size', 16),
+        seed=seed,
     )
     dm.setup("fit")
     
@@ -121,9 +106,23 @@ def train_model(
         warmup_steps=warmup_steps,
         warmup_ratio=warmup_ratio,  # Pass ratio to model for proper calculation
         train_batch_size=config.get('per_device_train_batch_size', 16),
-        eval_batch_size=config.get('per_device_eval_batch_size', 16),
+        adam_beta1=config.get('adam_beta1', 0.9),
+        adam_beta2=config.get('adam_beta2', 0.999),
+        optimizer_type=config.get('optimizer_type', 'adamw_torch'),
+        lr_scheduler_type=config.get('lr_scheduler_type', 'linear'),
+        classifier_dropout=config.get('classifier_dropout', None),
     )
     
+    # Model checkpoint callback - save best model by accuracy (matches Project 1)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=checkpoint_dir,
+        filename='best-checkpoint-{epoch:02d}-{accuracy:.4f}',
+        monitor='accuracy',
+        mode='max',
+        save_top_k=1,
+        save_last=False,
+    )
+
     # Trainer
     trainer = L.Trainer(
         max_epochs=max_epochs,
@@ -131,19 +130,32 @@ def train_model(
         devices=1,
         logger=logger,
         default_root_dir=checkpoint_dir,
-        enable_checkpointing=True,
+        callbacks=[checkpoint_callback],
         deterministic=True,
+        accumulate_grad_batches=config.get('gradient_accumulation_steps', 1),
     )
-    
+
     # Train
     trainer.fit(model, datamodule=dm)
-    
-    # Final evaluation
-    results = trainer.validate(model, datamodule=dm)
-    if results:
-        results = results[0]  # Take first validation result
-    
-    return results
+
+    # Load best model checkpoint (matches Project 1's load_best_model_at_end=True)
+    if checkpoint_callback.best_model_path:
+        print(f"\nLoading best model from: {checkpoint_callback.best_model_path}")
+        best_model = GLUETransformer.load_from_checkpoint(
+            checkpoint_callback.best_model_path,
+            model_name_or_path=model_name,
+            num_labels=dm.num_labels,
+            eval_splits=dm.eval_splits,
+            task_name=task_name,
+        )
+        # Run final validation with best model
+        final_results = trainer.validate(best_model, datamodule=dm)
+        results = final_results[0] if final_results else {}
+    else:
+        # Fallback to last epoch metrics
+        results = trainer.callback_metrics
+
+    return dict(results)
 
 
 def create_sweep_config(
@@ -189,8 +201,6 @@ def create_sweep_config(
             },
             # Fixed parameters
             "per_device_train_batch_size": {"value": 16},
-            "per_device_eval_batch_size": {"value": 16},
-            "max_seq_length": {"value": 128},
         }
     }
     
