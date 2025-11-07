@@ -46,9 +46,9 @@ services:
     command: >
       python main.py
       --checkpoint_dir /app/models
-      --lr 2e-5
-      --weight_decay 0.1
-      --warmup_ratio 0.15
+      --lr 3e-05
+      --weight_decay 0.08754104905198969
+      --warmup_ratio 0.1814720791654623
       --project_name ${WANDB_PROJECT:-MLOPS_p2_distilbert_docker}_custom
     restart: "no"
     profiles:

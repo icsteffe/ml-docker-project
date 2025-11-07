@@ -103,10 +103,10 @@ Based on extensive hyperparameter optimization in Project 1:
 | Parameter | Value | Performance |
 |-----------|-------|-------------|
 | Learning Rate | 3e-5 | **86.03% Accuracy** |
-| Weight Decay | 0.120 | **90.36% F1 Score** |
-| Warmup Ratio | 0.240 | **0.3912 Loss** |
+| Weight Decay | 0.0875 | **90.45% F1 Score** |
+| Warmup Ratio | 0.1815 | **0.3552 Loss** |
 
-The model automatically names runs as: `lr3e-05_wd0.120_wr0.240`
+The model automatically names runs as: `lr3e-05_wd0.088_wr0.181`
 
 ## 🔧 Environment Setup
 
