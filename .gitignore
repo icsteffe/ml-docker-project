@@ -57,9 +57,11 @@ wandb/
 data/
 dataset/
 *.csv
-*.json
 *.pkl
 *.pickle
+# Exclude JSON files except in config directory
+*.json
+!config/*.json
 
 # Logs
 logs/

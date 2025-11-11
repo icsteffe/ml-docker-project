@@ -1,0 +1,19 @@
+{
+  "learning_rate": 2.976868031262514e-05,
+  "weight_decay": 0.08754104905198969,
+  "warmup_ratio": 0.1814720791654623,
+  "per_device_train_batch_size": 16,
+  "gradient_accumulation_steps": 1,
+  "optimizer_type": "adamw_torch",
+  "lr_scheduler_type": "linear",
+  "adam_beta1": 0.9,
+  "adam_beta2": 0.999,
+  "classifier_dropout": 0.1,
+  "description": "Optimal hyperparameters found through Bayesian optimization in Project 1",
+  "source_experiment": "2.976868031262514e-05_wd0.08754104905198969_wr0.1814720791654623_sweep_bayesian",
+  "performance": {
+    "accuracy": 0.8603,
+    "f1": 0.9045,
+    "loss": 0.3552
+  }
+}
