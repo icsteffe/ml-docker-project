@@ -159,20 +159,20 @@ def train_model(
 
 
 def create_sweep_config(
-    learning_rate_range: tuple = (2.5e-5, 4e-5),
+    learning_rate_range: tuple = (1e-5, 1e-4),
     weight_decay_range: tuple = (0.08, 0.12),
     warmup_ratio_range: tuple = (0.15, 0.25),
     method: str = "bayes"
 ) -> Dict[str, Any]:
     """
     Create W&B sweep configuration.
-    
+
     Args:
-        learning_rate_range: (min, max) learning rate
+        learning_rate_range: (min, max) learning rate (explored on log scale)
         weight_decay_range: (min, max) weight decay
         warmup_ratio_range: (min, max) warmup ratio
         method: Sweep method ('bayes', 'grid', 'random')
-    
+
     Returns:
         Sweep configuration dictionary
     """
@@ -185,7 +185,7 @@ def create_sweep_config(
         },
         "parameters": {
             "learning_rate": {
-                "distribution": "uniform",
+                "distribution": "log_uniform",
                 "min": learning_rate_range[0],
                 "max": learning_rate_range[1]
             },
@@ -203,11 +203,12 @@ def create_sweep_config(
             "per_device_train_batch_size": {"value": 16},
         }
     }
-    
+
     if method == "grid":
         # Convert to discrete values for grid search
+        # Learning rate spaced on log scale
         sweep_config["parameters"]["learning_rate"] = {
-            "values": [2.5e-5, 3e-5, 3.5e-5, 4e-5]
+            "values": [1e-5, 2e-5, 3e-5, 5e-5]
         }
         sweep_config["parameters"]["weight_decay"] = {
             "values": [0.08, 0.09, 0.1, 0.11, 0.12]
